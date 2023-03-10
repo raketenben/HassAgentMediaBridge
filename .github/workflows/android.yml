@@ -26,7 +26,7 @@ jobs:
       run: |
           TMP_KEYSTORE_FILE_PATH="${GITHUB_WORKSPACE}"/app/keystore
           mkdir -p "${TMP_KEYSTORE_FILE_PATH}"
-          echo $ENCODED_STRING | base64 -di > "${TMP_KEYSTORE_FILE_PATH}"/app/signing_keystore.jks
+          echo $ENCODED_STRING | base64 -di > "${TMP_KEYSTORE_FILE_PATH}"/signing_keystore.jks
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
@@ -35,7 +35,6 @@ jobs:
       env:
         SIGNING_KEY_ALIAS: ${{ secrets.ALIAS }}
         SIGNING_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
-        SIGNING_STORE_FILE: keystore/signing_keystore.jks
     - name: Upload finished apk
       uses: actions/upload-artifact@v3
       with:
