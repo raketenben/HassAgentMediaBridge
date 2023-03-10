@@ -22,7 +22,7 @@ jobs:
     - name: Decode Keystore
       id: decode_keystore
       env:
-        ENCODED_STRING: ${{ secrets.SIGNING_KEY_BASE6 }}
+        ENCODED_STRING: ${{ secrets.SIGNINGKEYBASE64 }}
       run: |
           TMP_KEYSTORE_FILE_PATH="${GITHUB_WORKSPACE}"/app/keystore
           mkdir -p "${TMP_KEYSTORE_FILE_PATH}"
@@ -34,7 +34,7 @@ jobs:
       run: ./gradlew assembleRelease
       env:
         SIGNING_KEY_ALIAS: ${{ secrets.ALIAS }}
-        SIGNING_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+        SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTOREPASSWORD }}
     - name: Upload finished apk
       uses: actions/upload-artifact@v3
       with:
