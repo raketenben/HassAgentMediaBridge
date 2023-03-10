@@ -31,7 +31,6 @@ jobs:
         signingKeyBase64: ${{ secrets.SIGNING_KEY_BASE64 }}
         alias: ${{ secrets.ALIAS }}
         keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-        keyPassword: ${{ secrets.KEY_PASSWORD }}
     - name: Upload finished apk
       uses: actions/upload-artifact@v3
       with:
