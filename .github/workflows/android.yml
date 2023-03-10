@@ -24,8 +24,16 @@ jobs:
       run: chmod +x gradlew
     - name: Build with Gradle
       run: ./gradlew build
+    - name: Sign Android release
+      uses: r0adkll/sign-android-release@v1
+      with: 
+        releaseDirectory: /home/runner/work/HassAgentMediaBridge/HassAgentMediaBridge/app/build/outputs/apk/release/
+        signingKeyBase64: ${{ secrets.SIGNING_KEY_BASE64 }}
+        alias: ${{ secrets.ALIAS }}
+        keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+        keyPassword: ${{ secrets.KEY_PASSWORD }}
     - name: Upload finished apk
       uses: actions/upload-artifact@v3
       with:
         name: code-coverage-report
-        path: /home/runner/work/HassAgentMediaBridge/HassAgentMediaBridge/app/build/outputs/apk/release/*
+        path: ${{steps.sign_app.outputs.signedReleaseFile}}
