@@ -21,9 +21,10 @@ jobs:
         cache: gradle
     - name: Decode Keystore
       id: decode_keystore
-      uses: timheuer/base64-to-file@v1
+      uses: timheuer/base64-to-file@v1.2
       with:
-        fileName: 'keystore/signing_keystore.jks'
+        fileName: 'signing_keystore.jks'
+        fileDir: 'keystore/'
         encodedString: ${{ secrets.SIGNING_KEY_BASE64 }}
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
