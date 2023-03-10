@@ -24,9 +24,9 @@ jobs:
       env:
         ENCODED_STRING: ${{ secrets.SIGNING_KEY_BASE6 }}
       run: |
-          TMP_KEYSTORE_FILE_PATH="${GITHUB_WORKSPACE}"/keystore
+          TMP_KEYSTORE_FILE_PATH="${GITHUB_WORKSPACE}"/app/keystore
           mkdir "${TMP_KEYSTORE_FILE_PATH}"
-          echo $ENCODED_STRING | base64 -di > "${TMP_KEYSTORE_FILE_PATH}"/signing_keystore.jks
+          echo $ENCODED_STRING | base64 -di > "${TMP_KEYSTORE_FILE_PATH}"/app/signing_keystore.jks
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
