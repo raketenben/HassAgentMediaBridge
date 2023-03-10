@@ -28,4 +28,4 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: code-coverage-report
-        path: HassAgentMediaBridge/build/outputs/apk/release/app-release.apk
+        path: HassAgentMediaBridge/build/outputs/apk/release/app.apk
