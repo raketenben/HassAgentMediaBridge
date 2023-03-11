@@ -19,8 +19,8 @@ import java.util.*
 class HassioBridgeService : Service(), PlayerStateUpdateCallback  {
 
     private lateinit var session : MediaSessionCompat;
-    private lateinit var playerStateClient : PlayerStateClient;
     private lateinit var sharedPreferences : SharedPreferences;
+    private var playerStateClient : PlayerStateClient? = null;
     private var notificationClient: MediaNotificationClient? = null;
     override fun onBind(intent: Intent): IBinder? {
         return null
@@ -28,21 +28,18 @@ class HassioBridgeService : Service(), PlayerStateUpdateCallback  {
 
     override fun onCreate() {
         super.onCreate()
-
-        init();
     }
-
 
     private val mediaSessionCallback: MediaSessionCompat.Callback =
         object : MediaSessionCompat.Callback() {
             override fun onPlay() {
                 super.onPlay()
-                playerStateClient.play()
+                playerStateClient?.play()
             }
 
             override fun onPause() {
                 super.onPause()
-                playerStateClient.pause()
+                playerStateClient?.pause()
             }
 
             override fun onPlayFromMediaId(mediaId: String, extras: Bundle) {
@@ -55,17 +52,18 @@ class HassioBridgeService : Service(), PlayerStateUpdateCallback  {
 
             override fun onSkipToNext() {
                 super.onSkipToNext();
-                playerStateClient.skip();
+                playerStateClient?.skip();
             }
 
             override fun onSkipToPrevious() {
                 super.onSkipToNext();
-                playerStateClient.previous()
+                playerStateClient?.previous()
             }
         }
 
     fun init(){
         notificationClient?.clear(applicationContext);
+        playerStateClient?.closeConnection();
 
         YoutubeDL.getInstance().init(applicationContext);
 
@@ -76,8 +74,8 @@ class HassioBridgeService : Service(), PlayerStateUpdateCallback  {
         };
         playerStateClient = PlayerStateClient(sharedPreferences,this);
 
-        val volumeProvider = MyVolumeProvider(playerStateClient);
-        session.setPlaybackToRemote(volumeProvider);
+        /*val volumeProvider = MyVolumeProvider(playerStateClient!!);
+        session.setPlaybackToRemote(volumeProvider);*/
 
         notificationClient = MediaNotificationClient(sharedPreferences);
 

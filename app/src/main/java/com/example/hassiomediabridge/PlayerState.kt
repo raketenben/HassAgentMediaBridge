@@ -141,6 +141,10 @@ class PlayerStateClient(var sharedPreferences: SharedPreferences, var playerStat
         entity = sharedPreferences.getString("entity", null) ?: throw Exception("Entity not set");
     }
 
+    fun closeConnection(){
+        ws.disconnect()
+    }
+
     fun updateState(stateObject : JSONObject){
 
         val state = stateObject.getString("state")
