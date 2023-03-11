@@ -1,7 +1,11 @@
 package com.example.hassiomediabridge
 
-import android.content.SharedPreferences
+import android.content.*
+import android.os.*
+import android.content.Context
 import android.util.Log
+import android.widget.EditText
+import android.widget.Switch
 import com.neovisionaries.ws.client.*
 import org.json.JSONObject
 import java.net.URL
@@ -30,16 +34,13 @@ interface PlayerStateUpdateCallback {
     fun callback(report: PlayerStateReport)
 }
 
-class PlayerStateClient(var sharedPreferences: SharedPreferences, var playerStateUpdateCallback: PlayerStateUpdateCallback) {
-
-    private var endpoint : String =
-        sharedPreferences.getString("endpoint", null) ?: throw Exception("Endpoint not set")
-
-    private var token : String =
-        sharedPreferences.getString("token", null) ?: throw Exception("Token not set");
-
-    private var entity : String =
-        sharedPreferences.getString("entity", null) ?: throw Exception("Entity not set");
+class PlayerStateClient(
+    private val context: Context,
+    var playerStateUpdateCallback: PlayerStateUpdateCallback,
+) {
+    private var endpoint = "";
+    private var token = "";
+    private var entity = "";
 
     private var playerState : PlayerStateReport = PlayerStateReport(
         "",
@@ -53,8 +54,14 @@ class PlayerStateClient(var sharedPreferences: SharedPreferences, var playerStat
         ""
     )
 
+    init {
+        reloadSettings()
+    }
+
     private var messageId = 1;
-    private lateinit var ws : WebSocket;
+    private var ws : WebSocket;
+
+    private var reconnectingState = false;
 
     private val websocketHandler : WebSocketAdapter = object : WebSocketAdapter() {
         override fun  onConnected(ws: WebSocket, headers: Map<String, List<String>>) {
@@ -74,6 +81,7 @@ class PlayerStateClient(var sharedPreferences: SharedPreferences, var playerStat
                     ws.sendText(responseObject.toString())
                 }
                 "auth_ok" -> {
+
                     messageId += 1;
                     Log.i("websocket","authentication ok")
                     //subscribe to media player
@@ -88,7 +96,7 @@ class PlayerStateClient(var sharedPreferences: SharedPreferences, var playerStat
                     ws.sendText(responseObject.toString())
                 }
                 "auth_invalid" -> {
-                    Log.i("websocket","authentication failed")
+                    Log.w("websocket","authentication failed")
                 }
                 "event" -> {
                     var eventObject = messageObject.getJSONObject("event")
@@ -108,6 +116,16 @@ class PlayerStateClient(var sharedPreferences: SharedPreferences, var playerStat
             super.onError(websocket, cause)
         }
 
+        override fun onConnectError(websocket: WebSocket?, exception: WebSocketException?) {
+            super.onConnectError(websocket, exception)
+            Log.w("websocket", "Unable to connect! Scheduling connection retry")
+            if(reconnectingState) return;
+            reconnectingState = true;
+            Thread.sleep(5000)
+            recreateConnection()
+            reconnectingState = false;
+        }
+
         override fun onDisconnected(
             websocket: WebSocket?,
             serverCloseFrame: WebSocketFrame?,
@@ -115,34 +133,45 @@ class PlayerStateClient(var sharedPreferences: SharedPreferences, var playerStat
             closedByServer: Boolean
         ) {
             super.onDisconnected(websocket, serverCloseFrame, clientCloseFrame, closedByServer)
+            Log.w("websocket","Connection Lost! Scheduling connection retry")
+            if(reconnectingState) return;
+            reconnectingState = true;
+            Thread.sleep(5000)
+            recreateConnection()
+            reconnectingState = false;
         }
     };
 
     init {
-        var server_url = URL(endpoint)
-        var server_name = server_url.host
-
-        var factory : WebSocketFactory = WebSocketFactory()
+        val wsFactory = WebSocketFactory()
         val sslSocketFactory = SSLSocketFactory.getDefault()
-        factory.verifyHostname = true
-        factory.sslSocketFactory = sslSocketFactory as SSLSocketFactory?
-        factory.setServerName(server_name)
 
-        ws = factory.createSocket("$endpoint/api/websocket")
+        wsFactory.verifyHostname = true
+        wsFactory.sslSocketFactory = sslSocketFactory as SSLSocketFactory?
 
+        wsFactory.setServerName(URL(endpoint).host)
+
+        ws = wsFactory.createSocket("$endpoint/api/websocket")
         // Register a listener to receive WebSocket events.
         ws.addListener(websocketHandler)
-        ws.connectAsynchronously()
-    }
-
-    fun updateSharedPreferences(){
-        endpoint = sharedPreferences.getString("endpoint", null) ?: throw Exception("Endpoint not set");
-        token = sharedPreferences.getString("token", null) ?: throw Exception("Token not set");
-        entity = sharedPreferences.getString("entity", null) ?: throw Exception("Entity not set");
     }
 
     fun closeConnection(){
         ws.disconnect()
+    }
+
+    fun recreateConnection(){
+        closeConnection()
+        ws = ws.recreate()
+        ws.connectAsynchronously()
+    }
+
+    fun reloadSettings(){
+        var sharedPreferences = context.getSharedPreferences(context.getString(R.string.preference_file_key),Context.MODE_PRIVATE)
+
+        endpoint = sharedPreferences.getString("endpoint","") ?: ""
+        token = sharedPreferences.getString("token","") ?: ""
+        entity = sharedPreferences.getString("entity","") ?: ""
     }
 
     fun updateState(stateObject : JSONObject){
@@ -228,6 +257,7 @@ class PlayerStateClient(var sharedPreferences: SharedPreferences, var playerStat
     }
 
     private fun constructEvent(service : String): JSONObject {
+
         var responseObject = JSONObject()
         messageId += 1;
         responseObject.put("id",messageId)

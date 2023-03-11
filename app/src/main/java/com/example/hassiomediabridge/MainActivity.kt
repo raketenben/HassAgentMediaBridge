@@ -1,11 +1,7 @@
 package com.example.hassiomediabridge
 
-import android.content.Context
-import android.content.Intent
-import android.content.SharedPreferences
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
+import android.content.*
+import android.os.*
 import android.util.Log
 import android.widget.Button
 import android.widget.EditText
@@ -20,34 +16,32 @@ import javax.net.ssl.SSLSocketFactory
 
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var sharedPreferences : SharedPreferences
+    private lateinit var sharedPreferences : SharedPreferences;
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        sharedPreferences = applicationContext.getSharedPreferences(getString(R.string.preference_file_key),Context.MODE_PRIVATE);
+        loadSettings()
 
-        sharedPreferences = applicationContext.getSharedPreferences(getString(R.string.preference_file_key),Context.MODE_MULTI_PROCESS) ?: return
+        findViewById<Button>(R.id.saveAndTest).setOnClickListener { onSaveAndTest() }
 
-        findViewById<Button>(R.id.saveAndTest).setOnClickListener {
-            onSaveAndTest();
-        }
-
-        findViewById<Switch>(R.id.externalThumbnail).setOnClickListener {
+        val thumbnailSwitch = findViewById<Switch>(R.id.externalThumbnail);
+        thumbnailSwitch.setOnClickListener {
             with (sharedPreferences.edit()) {
-                putBoolean("externalThumbnail",findViewById<Switch>(R.id.externalThumbnail).isChecked);
+                putBoolean("externalThumbnail",thumbnailSwitch.isChecked);
                 apply()
             }
-            if(findViewById<Switch>(R.id.externalThumbnail).isChecked){
-                findViewById<Switch>(R.id.externalThumbnail).text = "YouTube"
+            thumbnailSwitch.text = if (thumbnailSwitch.isChecked) {
+                "YouTube"
             }else{
-                findViewById<Switch>(R.id.externalThumbnail).text = "HomeAssistant"
+                "HomeAssistant"
             }
         }
 
-        //start service
-        startService(Intent(applicationContext, HassioBridgeService::class.java))
 
-        loadSettings()
+        //start
+        startService(Intent(this, HassioBridgeService::class.java))
     }
 
     private fun loadSettings(){
@@ -71,7 +65,7 @@ class MainActivity : AppCompatActivity() {
 
     private val websocketHandler : WebSocketAdapter = object : WebSocketAdapter() {
         override fun  onConnected(ws: WebSocket, headers: Map<String, List<String>>) {
-            Log.i("websocket", "Connected")
+            Log.i("validation", "Connected")
             findViewById<TextView>(R.id.connectionStatus).text = "Connected!"
         }
 
@@ -90,19 +84,21 @@ class MainActivity : AppCompatActivity() {
                 }
                 "auth_ok" -> {
                     messageId += 1;
-                    Log.i("websocket","authentication ok")
+                    Log.i("validation","authentication ok")
                     //subscribe to media player
                     findViewById<TextView>(R.id.connectionStatus).text = "Connection and Auth is working!";
+                    Log.i("validation","closing connection")
+                    ws.disconnect()
                 }
                 "auth_invalid" -> {
-                    Log.i("websocket","authentication failed")
+                    Log.i("validation","authentication failed")
                     findViewById<TextView>(R.id.connectionStatus).text = "Authentication is invalid!"
                 }
             }
         }
 
         override fun onError(websocket: WebSocket?, cause: WebSocketException?) {
-            Log.e("websocket",cause.toString())
+            Log.e("validation",cause.toString())
             super.onError(websocket, cause)
             findViewById<TextView>(R.id.connectionStatus).text = "Connection Failed!"
         }
@@ -116,6 +112,7 @@ class MainActivity : AppCompatActivity() {
             super.onDisconnected(websocket, serverCloseFrame, clientCloseFrame, closedByServer)
         }
     };
+
 
     private fun onSaveAndTest(){
         //save settings
@@ -152,28 +149,8 @@ class MainActivity : AppCompatActivity() {
             ws.addListener(websocketHandler)
 
             ws.connect();
-
-            handler
         }
 
-        applicationContext.stopService(Intent(applicationContext, HassioBridgeService::class.java));
-        /*var result = stopService(Intent(applicationContext, HassioBridgeService::class.java))
-        Log.i("service","Killing Service result: $result");*/
         startService(Intent(applicationContext, HassioBridgeService::class.java))
-
-        /*val volumeProvider = VolumeProvider(VolumeProvider.VOLUME_CONTROL_ABSOLUTE,100,100) {
-
-        }
-        session.setPlaybackToRemote(volumeProvider);
-        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).run {
-            setAudioAttributes(AudioAttributes.Builder().run {
-                build()
-            })
-            build()
-        }
-        val some = audioManager.requestAudioFocus(focusRequest);
-        Log.d("y",some.toString());*/
-
     }
 }

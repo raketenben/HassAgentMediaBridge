@@ -103,9 +103,9 @@
     <TextView
         android:id="@+id/textView3"
         android:layout_width="311dp"
-        android:layout_height="62dp"
+        android:layout_height="108dp"
         android:layout_marginTop="8dp"
-        android:text="Youtube Thumbnail will be higher quality but take longer to fetch"
+        android:text="Youtube Thumbnail will be higher quality but take longer to fetch \n (You may need to force kill the app for the background service to sync the new settings)"
         android:textAlignment="center"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

@@ -19,7 +19,16 @@ import java.net.URL
 import java.util.concurrent.Executors
 
 
-class MediaNotificationClient(private var sharedPreferences : SharedPreferences) {
+class MediaNotificationClient(var context: Context) {
+
+    private var endpoint = "";
+    private var externalThumbnail = false;
+
+    fun reloadSettings(){
+        var sharedPreferences = context.getSharedPreferences(context.getString(R.string.preference_file_key),Context.MODE_PRIVATE)
+        endpoint = sharedPreferences.getString("endpoint","") ?: ""
+        externalThumbnail = sharedPreferences.getBoolean("externalThumbnail",false)
+    }
 
     private var lastTitle = ""
 
@@ -32,9 +41,6 @@ class MediaNotificationClient(private var sharedPreferences : SharedPreferences)
     private var position = 0L
 
     fun setState(session: MediaSessionCompat, playerState: PlayerStateReport,applicationContext: Context){
-
-        sharedPreferences = applicationContext.getSharedPreferences(applicationContext.getString(R.string.preference_file_key),Context.MODE_MULTI_PROCESS) ?: return;
-
         title = playerState.title
         artist = playerState.artist
         playing = playerState.playing
@@ -44,19 +50,17 @@ class MediaNotificationClient(private var sharedPreferences : SharedPreferences)
 
 
         val thumbnailPath = playerState.thumbnail
-        val host = sharedPreferences.getString("endpoint","")
-        val localThumbnailUrl = "$host$thumbnailPath"
+        val localThumbnailUrl = "$endpoint$thumbnailPath"
 
         if(lastTitle != title) {
             lastTitle = title
 
             val executor = Executors.newSingleThreadExecutor()
-            val youtubeThumbnail = sharedPreferences.getBoolean("externalThumbnail",false)
 
-            Log.i("thumbnail source",youtubeThumbnail.toString())
+            Log.i("thumbnail source",externalThumbnail.toString())
             executor.execute {
                 //thumbnail source
-                val thumbnailUrl = if(youtubeThumbnail) {
+                val thumbnailUrl = if(externalThumbnail) {
                     val request = YoutubeDLRequest("$artist - $title")
                     request.addOption("--default-search",  "ytsearch1")
                     val response = YoutubeDL.getInstance().getInfo(request)
