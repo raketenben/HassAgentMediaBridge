@@ -13,16 +13,15 @@ import javax.net.ssl.SSLSocketFactory
 
 
 class PlayerStateReport(
-    val title: String,
-    val artist: String,
-    val inactive_since: Long,
-    val playing: Boolean,
-    val media_duration: Double,
-    val media_position: Double,
-    val thumbnail: String,
-    ) {
-    init {}
-}
+    val mediaTitle: String,
+    val mediaArtist: String,
+    val inactiveSince: Long,
+    val playerStatus: String,
+    val mediaDuration: Double,
+    val mediaPosition: Double,
+    val thumbnailUrl: String,
+    val deviceName : String
+    ) {}
 
 
 interface PlayerStateUpdateCallback {
@@ -33,25 +32,14 @@ class PlayerStateClient(
     private val context: Context,
     private var playerStateUpdateCallback: PlayerStateUpdateCallback,
 ) {
-    private var endpoint = "";
-    private var token = "";
-    private var entity = "";
+    private var endpoint = ""
+    private var token = ""
+    private var entity = ""
 
-    private var playerState : PlayerStateReport = PlayerStateReport(
-        "",
-        "",
-        10000,
-        false,
-        0.0,
-        0.0, ""
-    )
+    private var messageId = 1
+    private var ws : WebSocket
 
-    private var messageId = 1;
-    private var ws : WebSocket;
-
-    private var connectivityManager : ConnectivityManager;
-
-    private var reconnectingState = false;
+    private var connectivityManager : ConnectivityManager
 
     private val websocketHandler : WebSocketAdapter = object : WebSocketAdapter() {
         override fun  onConnected(ws: WebSocket, headers: Map<String, List<String>>) {
@@ -59,26 +47,25 @@ class PlayerStateClient(
         }
 
         override fun onTextMessage(ws: WebSocket, text: String) {
-            val messageObject = JSONObject(text);
-            var type = messageObject.getString("type");
+            val messageObject = JSONObject(text)
 
-            when (type) {
+            when (messageObject.getString("type")) {
                 "auth_required" -> {
                     //send our token
-                    var responseObject = JSONObject()
+                    val responseObject = JSONObject()
                     responseObject.put("type","auth")
                     responseObject.put("access_token", token)
                     ws.sendText(responseObject.toString())
                 }
                 "auth_ok" -> {
 
-                    messageId += 1;
+                    messageId += 1
                     Log.i("websocket","authentication ok")
                     //subscribe to media player
-                    var responseObject = JSONObject()
+                    val responseObject = JSONObject()
                     responseObject.put("id",messageId)
                     responseObject.put("type","subscribe_trigger")
-                    var triggerObject = JSONObject()
+                    val triggerObject = JSONObject()
                     triggerObject.put("platform","state")
                     triggerObject.put("entity_id",entity)
 
@@ -89,14 +76,14 @@ class PlayerStateClient(
                     Log.w("websocket","authentication failed")
                 }
                 "event" -> {
-                    var eventObject = messageObject.getJSONObject("event")
-                    var variableObject = eventObject.getJSONObject("variables")
-                    var triggerObject = variableObject.getJSONObject("trigger")
+                    val eventObject = messageObject.getJSONObject("event")
+                    val variableObject = eventObject.getJSONObject("variables")
+                    val triggerObject = variableObject.getJSONObject("trigger")
 
                     //var fromStateObject = triggerObject.getJSONObject("from_state")
-                    var toStateObject = triggerObject.getJSONObject("to_state")
+                    val toStateObject = triggerObject.getJSONObject("to_state")
 
-                    updateState(toStateObject);
+                    updateState(toStateObject)
                 }
             }
         }
@@ -120,20 +107,20 @@ class PlayerStateClient(
             super.onDisconnected(websocket, serverCloseFrame, clientCloseFrame, closedByServer)
             Log.i("websocket","Disconnected")
         }
-    };
+    }
 
-    private val conectivityCallback = object : ConnectivityManager.NetworkCallback () {
+    private val connectivityCallback = object : ConnectivityManager.NetworkCallback () {
         override fun onAvailable(network: Network) {
             super.onAvailable(network)
             Log.i("network", "Network Available")
-            recreateConnection();
+            recreateConnection()
         }
 
         override fun onLost(network: Network) {
             super.onLost(network)
             Log.i("network", "Connection lost")
-            var emptyState = PlayerStateReport("","",10000,false,0.0,0.0,"")
-            playerStateUpdateCallback.callback(emptyState);
+            val emptyState = PlayerStateReport("","",10000,"unavailable",0.0,0.0,"","")
+            playerStateUpdateCallback.callback(emptyState)
         }
     }
 
@@ -152,8 +139,8 @@ class PlayerStateClient(
         // Register a listener to receive WebSocket events.
         ws.addListener(websocketHandler)
         //register network change listener
-        connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager;
-        connectivityManager.registerDefaultNetworkCallback(conectivityCallback)
+        connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        connectivityManager.registerDefaultNetworkCallback(connectivityCallback)
     }
 
 
@@ -168,7 +155,7 @@ class PlayerStateClient(
     }
 
     fun reloadSettings(){
-        var sharedPreferences = context.getSharedPreferences(context.getString(R.string.preference_file_key),Context.MODE_PRIVATE)
+        val sharedPreferences = context.getSharedPreferences(context.getString(R.string.preference_file_key),Context.MODE_PRIVATE)
 
         endpoint = sharedPreferences.getString("endpoint","") ?: ""
         token = sharedPreferences.getString("token","") ?: ""
@@ -177,61 +164,42 @@ class PlayerStateClient(
 
     fun updateState(stateObject : JSONObject){
 
+        Log.i("test",stateObject.toString())
+
         val state = stateObject.getString("state")
-        val attributes = stateObject.getJSONObject("attributes");
-        val volume_level = attributes.getDouble("volume_level");
-        val volume_muted = attributes.getBoolean("is_volume_muted");
-        val media_type = attributes.getString("media_content_type");
-        var media_string = attributes.getString("media_title");
-        var media_duration =  attributes.getDouble("media_duration");
-        var media_position =  attributes.getDouble("media_position");
-        var media_thumbnail =  attributes.getString("entity_picture");
 
+        val attributes = stateObject.getJSONObject("attributes")
+        //val volumeLevel = attributes.getDouble("volume_level")
+        //val volumeMuted = attributes.getBoolean("is_volume_muted")
+        //val mediaType = attributes.getString("media_content_type")
+        val mediaArtist = try {attributes.getString("media_artist")} catch (e : Exception){"none"}
+        val mediaTitle = try {attributes.getString("media_title")} catch (e : Exception){""}
+        val mediaDuration =  try {attributes.getDouble("media_duration")} catch (e : Exception){0.0}
+        val mediaPosition =  try {attributes.getDouble("media_position")} catch (e : Exception){0.0}
+        val mediaThumbnailUrl = try {attributes.getString("entity_picture")} catch (e : Exception){""}
+        val deviceName = try {attributes.getString("friendly_name")} catch (e : Exception){""}
 
-        val media_split = media_string.split("-");
-
-        var media_artist = ""
-        var media_title: String
-
-        when(media_split.count()){
-            1 -> media_title = media_string
-            2 -> {
-                media_artist = media_split[0]
-                media_title = media_split[1]
-            }
-            3 -> {
-                media_artist = media_split[1]
-                media_title = media_split[2]
-            }
-            4 -> {
-                media_artist = media_split[1]
-                media_title = media_split[2]
-            }
-            else -> {
-                media_artist = media_split[1]
-                media_title = media_split[2]
-            }
+        val minutesPast = try {
+            val lastChanged = stateObject.getString("last_changed")
+            val lastChange = Instant.parse(lastChanged.split("+")[0] + "Z")
+            val now = Instant.now()
+            val difference = Duration.between(lastChange, now)
+            difference.toMinutes()
+        }  catch(e : Exception) {
+            0
         }
 
-        val last_changed = stateObject.getString("last_changed");
-        val last_change = Instant.parse(last_changed.split("+")[0]+"Z")
-        val now = Instant.now();
-        val differenz = Duration.between(last_change,now);
-        val past_minutes = differenz.toMinutes();
-
-        val report = PlayerStateReport(
-            media_title,
-            media_artist,
-            past_minutes,
-            state == "playing",
-            media_duration,
-            media_position,
-            media_thumbnail
-        );
-
-        playerState = report;
-
-        playerStateUpdateCallback.callback(playerState);
+        playerStateUpdateCallback.callback(PlayerStateReport(
+            mediaTitle,
+            mediaArtist,
+            minutesPast,
+            state,
+            mediaDuration,
+            mediaPosition,
+            mediaThumbnailUrl,
+            deviceName
+            )
+        )
     }
 
     fun play(){
@@ -245,29 +213,30 @@ class PlayerStateClient(
     fun skip() {
         callBasicService("media_next_track")
     }
+
     fun previous() {
         callBasicService("media_previous_track")
     }
 
     private fun callBasicService(service : String) {
         val event = constructEvent(service)
-        ws.sendText(event.toString());
+        ws.sendText(event.toString())
     }
 
     private fun constructEvent(service : String): JSONObject {
 
-        var responseObject = JSONObject()
-        messageId += 1;
+        val responseObject = JSONObject()
+        messageId += 1
         responseObject.put("id",messageId)
         responseObject.put("type","call_service")
         responseObject.put("domain","media_player")
         responseObject.put("service",service)
 
-        var targetObject = JSONObject()
+        val targetObject = JSONObject()
         targetObject.put("entity_id", entity)
 
         responseObject.put("target",targetObject)
 
-        return responseObject;
+        return responseObject
     }
 }

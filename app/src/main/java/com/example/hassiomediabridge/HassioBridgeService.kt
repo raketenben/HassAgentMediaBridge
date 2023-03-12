@@ -5,9 +5,16 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.os.*
 import android.support.v4.media.session.MediaSessionCompat
 import android.util.Log
+import androidx.media.VolumeProviderCompat
+import androidx.mediarouter.media.MediaRouteDescriptor
+import androidx.mediarouter.media.MediaRouteProvider
+import androidx.mediarouter.media.MediaRouteProviderDescriptor
+import androidx.mediarouter.media.MediaRouter
+import androidx.mediarouter.media.MediaRouter.getInstance
 import com.yausername.youtubedl_android.YoutubeDL
 
 
@@ -17,18 +24,36 @@ class HassioBridgeService : Service(), PlayerStateUpdateCallback  {
     private lateinit var notificationClient: MediaNotificationClient
 
     private lateinit var playerStateClient : PlayerStateClient
+    private lateinit var volumeProvider : VolumeProviderCompat
+
+    private lateinit var mediaRouter : MediaRouter;
 
     override fun onCreate() {
         super.onCreate()
 
-        YoutubeDL.getInstance().init(applicationContext)
+        YoutubeDL.getInstance().init(this)
 
         notificationClient = MediaNotificationClient(this)
-        playerStateClient = PlayerStateClient(applicationContext,this)
+        playerStateClient = PlayerStateClient(this,this)
 
-        session = MediaSessionCompat(applicationContext,"HassioMediaBridge").apply {
+        volumeProvider = HassVolumeProvider();
+
+        session = MediaSessionCompat(this,"HassioMediaBridge").apply {
             setCallback(mediaSessionCallback)
+            setPlaybackToRemote(volumeProvider);
+            isActive = true
         }
+
+        mediaRouter = getInstance(this);
+        mediaRouter.setMediaSessionCompat(session);
+
+        val routeProvider = HassRouterProvider(this);
+        mediaRouter.addProvider(routeProvider);
+        val route = mediaRouter.providers.last().routes.last()
+
+        mediaRouter.selectRoute(route)
+
+        Log.i("routes", mediaRouter.selectedRoute.toString());
 
         createNotificationChannel()
     }
@@ -87,6 +112,38 @@ class HassioBridgeService : Service(), PlayerStateUpdateCallback  {
     }
 
     override fun callback(report: PlayerStateReport) {
-        notificationClient.setState(session,report,this)
+        notificationClient.setState(session,report)
+    }
+}
+
+class HassRouterProvider(var _context: Context) : MediaRouteProvider(_context){
+    init {
+        val descriptor = MediaRouteDescriptor.Builder("HASS_PLAYER_ROUTE","HassioBridgeService")
+            .setDescription("Output Device for HassioMediaBridge")
+            .setPlaybackStream(AudioManager.STREAM_MUSIC)
+            .setPlaybackType(MediaRouter.RouteInfo.PLAYBACK_TYPE_REMOTE)
+            .setVolumeHandling(MediaRouter.RouteInfo.PLAYBACK_VOLUME_VARIABLE)
+            .setVolume(100)
+            .setVolumeMax(100)
+            .build()
+
+        val descriptionCompat = MediaRouteProviderDescriptor.Builder()
+            .addRoute(descriptor)
+            .build()
+
+        setDescriptor(descriptionCompat)
+    }
+
+}
+
+class HassVolumeProvider : VolumeProviderCompat(VOLUME_CONTROL_RELATIVE,100,100) {
+    override fun onAdjustVolume(direction: Int) {
+        super.onAdjustVolume(direction)
+        Log.i("adjust event",direction.toString())
+    }
+
+    override fun onSetVolumeTo(volume: Int) {
+        super.onSetVolumeTo(volume)
+        Log.i("volume event",volume.toString())
     }
 }
