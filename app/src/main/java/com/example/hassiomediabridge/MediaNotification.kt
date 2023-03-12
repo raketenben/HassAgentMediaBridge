@@ -31,6 +31,10 @@ class MediaNotificationClient(var context: Context) {
         externalThumbnail = sharedPreferences.getBoolean("externalThumbnail",false)
     }
 
+    init {
+        reloadSettings()
+    }
+
     private var lastTitle = ""
 
     private var title = ""
