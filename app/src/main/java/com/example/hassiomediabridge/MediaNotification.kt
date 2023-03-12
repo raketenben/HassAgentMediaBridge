@@ -16,6 +16,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.sql.Timestamp
 import java.util.concurrent.Executors
 
 
@@ -40,20 +41,26 @@ class MediaNotificationClient(var context: Context) {
     private var duration = 0L
     private var position = 0L
 
+    //no timepass fix
+    private var lastPosition = 0L;
+    private var mediaStartTime = Timestamp(System.currentTimeMillis())
+
     fun setState(session: MediaSessionCompat, playerState: PlayerStateReport,applicationContext: Context){
+
         title = playerState.title
         artist = playerState.artist
         playing = playerState.playing
         inactiveSince = playerState.inactive_since
         duration = (playerState.media_duration*1000).toLong()
-        position = (playerState.media_position*1000).toLong()
-
+        var timePosition = (playerState.media_position*1000).toLong()
 
         val thumbnailPath = playerState.thumbnail
         val localThumbnailUrl = "$endpoint$thumbnailPath"
 
         if(lastTitle != title) {
             lastTitle = title
+
+            mediaStartTime = Timestamp(System.currentTimeMillis())
 
             val executor = Executors.newSingleThreadExecutor()
 
@@ -75,7 +82,17 @@ class MediaNotificationClient(var context: Context) {
             }
         }
 
+        //no timepass fix
+        position = if(lastPosition != timePosition){
+            lastPosition = timePosition;
+            mediaStartTime = Timestamp(System.currentTimeMillis())
+            timePosition
+        }else{
+            Timestamp(System.currentTimeMillis()).time - mediaStartTime.time + lastPosition;
+        }
+
         update(session,applicationContext)
+
     }
 
     fun clear(applicationContext: Context){

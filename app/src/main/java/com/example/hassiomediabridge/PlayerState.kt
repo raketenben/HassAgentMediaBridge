@@ -1,11 +1,9 @@
 package com.example.hassiomediabridge
 
-import android.content.*
-import android.os.*
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
 import android.util.Log
-import android.widget.EditText
-import android.widget.Switch
 import com.neovisionaries.ws.client.*
 import org.json.JSONObject
 import java.net.URL
@@ -15,16 +13,13 @@ import javax.net.ssl.SSLSocketFactory
 
 
 class PlayerStateReport(
-    val title : String,
-    val artist : String,
-    val volume : Double,
-    val muted : Boolean,
-    val media_type : String,
-    val inactive_since : Long,
-    val playing : Boolean,
-    val media_duration : Double,
-    val media_position : Double,
-    val thumbnail : String,
+    val title: String,
+    val artist: String,
+    val inactive_since: Long,
+    val playing: Boolean,
+    val media_duration: Double,
+    val media_position: Double,
+    val thumbnail: String,
     ) {
     init {}
 }
@@ -36,7 +31,7 @@ interface PlayerStateUpdateCallback {
 
 class PlayerStateClient(
     private val context: Context,
-    var playerStateUpdateCallback: PlayerStateUpdateCallback,
+    private var playerStateUpdateCallback: PlayerStateUpdateCallback,
 ) {
     private var endpoint = "";
     private var token = "";
@@ -45,31 +40,26 @@ class PlayerStateClient(
     private var playerState : PlayerStateReport = PlayerStateReport(
         "",
         "",
-        1.0,
+        10000,
         false,
-        "music",
-        10000,false,
         0.0,
-        0.0,
-        ""
+        0.0, ""
     )
-
-    init {
-        reloadSettings()
-    }
 
     private var messageId = 1;
     private var ws : WebSocket;
+
+    private var connectivityManager : ConnectivityManager;
 
     private var reconnectingState = false;
 
     private val websocketHandler : WebSocketAdapter = object : WebSocketAdapter() {
         override fun  onConnected(ws: WebSocket, headers: Map<String, List<String>>) {
-            Log.d("websocket", "Connected")
+            Log.i("websocket", "Connected")
         }
 
         override fun onTextMessage(ws: WebSocket, text: String) {
-            var messageObject = JSONObject(text);
+            val messageObject = JSONObject(text);
             var type = messageObject.getString("type");
 
             when (type) {
@@ -77,7 +67,7 @@ class PlayerStateClient(
                     //send our token
                     var responseObject = JSONObject()
                     responseObject.put("type","auth")
-                    responseObject.put("access_token","$token")
+                    responseObject.put("access_token", token)
                     ws.sendText(responseObject.toString())
                 }
                 "auth_ok" -> {
@@ -90,7 +80,7 @@ class PlayerStateClient(
                     responseObject.put("type","subscribe_trigger")
                     var triggerObject = JSONObject()
                     triggerObject.put("platform","state")
-                    triggerObject.put("entity_id","$entity")
+                    triggerObject.put("entity_id",entity)
 
                     responseObject.put("trigger",triggerObject)
                     ws.sendText(responseObject.toString())
@@ -118,12 +108,7 @@ class PlayerStateClient(
 
         override fun onConnectError(websocket: WebSocket?, exception: WebSocketException?) {
             super.onConnectError(websocket, exception)
-            Log.w("websocket", "Unable to connect! Scheduling connection retry")
-            if(reconnectingState) return;
-            reconnectingState = true;
-            Thread.sleep(5000)
-            recreateConnection()
-            reconnectingState = false;
+            Log.w("websocket", "Unable to connect!")
         }
 
         override fun onDisconnected(
@@ -133,16 +118,28 @@ class PlayerStateClient(
             closedByServer: Boolean
         ) {
             super.onDisconnected(websocket, serverCloseFrame, clientCloseFrame, closedByServer)
-            Log.w("websocket","Connection Lost! Scheduling connection retry")
-            if(reconnectingState) return;
-            reconnectingState = true;
-            Thread.sleep(5000)
-            recreateConnection()
-            reconnectingState = false;
+            Log.i("websocket","Disconnected")
         }
     };
 
+    private val conectivityCallback = object : ConnectivityManager.NetworkCallback () {
+        override fun onAvailable(network: Network) {
+            super.onAvailable(network)
+            Log.i("network", "Network Available")
+            recreateConnection();
+        }
+
+        override fun onLost(network: Network) {
+            super.onLost(network)
+            Log.i("network", "Connection lost")
+            var emptyState = PlayerStateReport("","",10000,false,0.0,0.0,"")
+            playerStateUpdateCallback.callback(emptyState);
+        }
+    }
+
     init {
+        reloadSettings()
+
         val wsFactory = WebSocketFactory()
         val sslSocketFactory = SSLSocketFactory.getDefault()
 
@@ -154,14 +151,18 @@ class PlayerStateClient(
         ws = wsFactory.createSocket("$endpoint/api/websocket")
         // Register a listener to receive WebSocket events.
         ws.addListener(websocketHandler)
+        //register network change listener
+        connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager;
+        connectivityManager.registerDefaultNetworkCallback(conectivityCallback)
     }
 
-    fun closeConnection(){
+
+    private fun closeConnection(){
         ws.disconnect()
     }
 
     fun recreateConnection(){
-        closeConnection()
+        ws.disconnect()
         ws = ws.recreate()
         ws.connectAsynchronously()
     }
@@ -190,7 +191,7 @@ class PlayerStateClient(
         val media_split = media_string.split("-");
 
         var media_artist = ""
-        var media_title = ""
+        var media_title: String
 
         when(media_split.count()){
             1 -> media_title = media_string
@@ -221,9 +222,6 @@ class PlayerStateClient(
         val report = PlayerStateReport(
             media_title,
             media_artist,
-            volume_level,
-            volume_muted,
-            media_type,
             past_minutes,
             state == "playing",
             media_duration,
@@ -266,7 +264,7 @@ class PlayerStateClient(
         responseObject.put("service",service)
 
         var targetObject = JSONObject()
-        targetObject.put("entity_id","$entity")
+        targetObject.put("entity_id", entity)
 
         responseObject.put("target",targetObject)
 
