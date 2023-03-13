@@ -117,8 +117,7 @@ class MediaNotificationClient(var context: Context) {
             PlaybackStateCompat.ACTION_PLAY or
             PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
             PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
-            PlaybackStateCompat.ACTION_FAST_FORWARD or
-            PlaybackStateCompat.ACTION_REWIND
+            PlaybackStateCompat.ACTION_SEEK_TO
         )
 
 

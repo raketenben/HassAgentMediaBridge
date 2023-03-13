@@ -83,6 +83,11 @@ class HassioBridgeService : Service(), PlayerStateUpdateCallback  {
                 super.onSkipToNext()
                 playerStateClient.previous()
             }
+
+            override fun onSeekTo(pos: Long) {
+                super.onSeekTo(pos)
+                playerStateClient.seekTo((pos/1000L).toDouble());
+            }
         }
 
 

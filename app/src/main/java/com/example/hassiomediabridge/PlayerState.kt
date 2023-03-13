@@ -163,9 +163,6 @@ class PlayerStateClient(
     }
 
     fun updateState(stateObject : JSONObject){
-
-        Log.i("test",stateObject.toString())
-
         val state = stateObject.getString("state")
 
         val attributes = stateObject.getJSONObject("attributes")
@@ -200,6 +197,13 @@ class PlayerStateClient(
             deviceName
             )
         )
+    }
+
+    fun seekTo(pos : Double){
+        val event = constructEvent("media_seek")
+        val data = JSONObject().put("seek_position",pos)
+        event.put("service_data",data)
+        ws.sendText(event.toString())
     }
 
     fun play(){
