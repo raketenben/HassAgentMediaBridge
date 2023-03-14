@@ -28,6 +28,8 @@ class HassioBridgeService : Service(), PlayerStateUpdateCallback  {
 
     private lateinit var mediaRouter : MediaRouter;
 
+    private lateinit var wakeLock: PowerManager.WakeLock;
+
     override fun onCreate() {
         super.onCreate()
 
@@ -56,6 +58,12 @@ class HassioBridgeService : Service(), PlayerStateUpdateCallback  {
         Log.i("routes", mediaRouter.selectedRoute.toString());
 
         createNotificationChannel()
+
+        wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
+            newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "HassMediaBridge::playerSync").apply {
+                acquire()
+            }
+        }
     }
 
     private val mediaSessionCallback: MediaSessionCompat.Callback =
@@ -117,6 +125,12 @@ class HassioBridgeService : Service(), PlayerStateUpdateCallback  {
     }
 
     override fun callback(report: PlayerStateReport) {
+        if(report.playerStatus == "unavailable"){
+            wakeLock.release()
+        }else{
+            wakeLock.acquire()
+        }
+
         notificationClient.setState(session,report)
     }
 }
