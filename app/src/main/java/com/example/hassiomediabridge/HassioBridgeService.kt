@@ -26,9 +26,9 @@ class HassioBridgeService : Service(), PlayerStateUpdateCallback  {
     private lateinit var playerStateClient : PlayerStateClient
     private lateinit var volumeProvider : VolumeProviderCompat
 
-    private lateinit var mediaRouter : MediaRouter;
+    private lateinit var mediaRouter : MediaRouter
 
-    private lateinit var wakeLock: PowerManager.WakeLock;
+    private lateinit var wakeLock: PowerManager.WakeLock
 
     override fun onCreate() {
         super.onCreate()
@@ -38,32 +38,32 @@ class HassioBridgeService : Service(), PlayerStateUpdateCallback  {
         notificationClient = MediaNotificationClient(this)
         playerStateClient = PlayerStateClient(this,this)
 
-        volumeProvider = HassVolumeProvider();
+        volumeProvider = HassVolumeProvider()
 
         session = MediaSessionCompat(this,"HassioMediaBridge").apply {
             setCallback(mediaSessionCallback)
-            setPlaybackToRemote(volumeProvider);
+            setPlaybackToRemote(volumeProvider)
             isActive = true
         }
 
-        mediaRouter = getInstance(this);
-        mediaRouter.setMediaSessionCompat(session);
+        mediaRouter = getInstance(this)
+        mediaRouter.setMediaSessionCompat(session)
 
-        val routeProvider = HassRouterProvider(this);
-        mediaRouter.addProvider(routeProvider);
+        val routeProvider = HassRouterProvider(this)
+        mediaRouter.addProvider(routeProvider)
         val route = mediaRouter.providers.last().routes.last()
 
         mediaRouter.selectRoute(route)
 
-        Log.i("routes", mediaRouter.selectedRoute.toString());
+        Log.i("routes", mediaRouter.selectedRoute.toString())
 
         createNotificationChannel()
 
-        wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
+        /*wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
             newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "HassMediaBridge::playerSync").apply {
                 acquire()
             }
-        }
+        }*/
     }
 
     private val mediaSessionCallback: MediaSessionCompat.Callback =
@@ -94,14 +94,14 @@ class HassioBridgeService : Service(), PlayerStateUpdateCallback  {
 
             override fun onSeekTo(pos: Long) {
                 super.onSeekTo(pos)
-                playerStateClient.seekTo((pos/1000L).toDouble());
+                playerStateClient.seekTo((pos/1000L).toDouble())
             }
         }
 
 
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.i("service","Received Intent - Reloading Settings")
-        playerStateClient.reloadSettings();
+        playerStateClient.reloadSettings()
         notificationClient.reloadSettings()
 
         playerStateClient.recreateConnection()
@@ -125,11 +125,11 @@ class HassioBridgeService : Service(), PlayerStateUpdateCallback  {
     }
 
     override fun callback(report: PlayerStateReport) {
-        if(report.playerStatus == "unavailable"){
-            wakeLock.release()
+        /*if(report.playerStatus == "unavailable"){
+            if (wakeLock.isHeld) wakeLock.release()
         }else{
-            wakeLock.acquire()
-        }
+            if (!wakeLock.isHeld) wakeLock.acquire()
+        }*/
 
         notificationClient.setState(session,report)
     }

@@ -3,6 +3,8 @@ package com.example.hassiomediabridge
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.neovisionaries.ws.client.*
 import org.json.JSONObject
@@ -40,6 +42,8 @@ class PlayerStateClient(
     private var ws : WebSocket
 
     private var connectivityManager : ConnectivityManager
+
+    private var reconnectScheduled = false
 
     private val websocketHandler : WebSocketAdapter = object : WebSocketAdapter() {
         override fun  onConnected(ws: WebSocket, headers: Map<String, List<String>>) {
@@ -91,11 +95,13 @@ class PlayerStateClient(
         override fun onError(websocket: WebSocket?, cause: WebSocketException?) {
             Log.e("websocket",cause.toString())
             super.onError(websocket, cause)
+            tryReconnect()
         }
 
         override fun onConnectError(websocket: WebSocket?, exception: WebSocketException?) {
             super.onConnectError(websocket, exception)
             Log.w("websocket", "Unable to connect!")
+            tryReconnect()
         }
 
         override fun onDisconnected(
@@ -106,6 +112,7 @@ class PlayerStateClient(
         ) {
             super.onDisconnected(websocket, serverCloseFrame, clientCloseFrame, closedByServer)
             Log.i("websocket","Disconnected")
+            tryReconnect()
         }
     }
 
@@ -143,6 +150,20 @@ class PlayerStateClient(
         connectivityManager.registerDefaultNetworkCallback(connectivityCallback)
     }
 
+    fun tryReconnect(){
+        if(reconnectScheduled) return
+        reconnectScheduled = true
+        Log.i("websocket","Retrying in 5 seconds")
+        Handler(Looper.getMainLooper()).postDelayed({
+            reconnectScheduled = false
+            if(!ws.isOpen) {
+                Log.i("websocket","Retrying...")
+                recreateConnection()
+            }else{
+                Log.i("websocket","Discarding retry, cause websocket is connected")
+            }
+        }, 5000)
+    }
 
     private fun closeConnection(){
         ws.disconnect()
