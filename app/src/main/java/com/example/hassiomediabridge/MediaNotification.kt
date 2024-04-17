@@ -1,5 +1,6 @@
 package com.example.hassiomediabridge
 
+import android.app.Notification
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -166,6 +167,23 @@ class MediaNotificationClient(var context: Context) {
                 notify(1, notificationBuilder.build())
             }
         }
+    }
+
+    fun firstNotification(): Notification {
+
+        val notificationBuilder = NotificationCompat.Builder(context, "23")
+            .setSmallIcon(R.mipmap.ic_launcher_monochrome)
+            .setChannelId("MEDIA")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+
+        var not = notificationBuilder.build()
+
+        with(NotificationManagerCompat.from(context)) {
+            // notificationId is a unique int for each notification that you must define
+            notify(1, not)
+        }
+
+        return not
     }
 
     private fun getBitmapFromURL(src: String?): Bitmap? {

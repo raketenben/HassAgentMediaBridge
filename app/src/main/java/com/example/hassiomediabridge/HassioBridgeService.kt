@@ -9,6 +9,7 @@ import android.media.AudioManager
 import android.os.*
 import android.support.v4.media.session.MediaSessionCompat
 import android.util.Log
+import androidx.core.app.ServiceCompat
 import androidx.media.VolumeProviderCompat
 import androidx.mediarouter.media.MediaRouteDescriptor
 import androidx.mediarouter.media.MediaRouteProvider
@@ -100,6 +101,9 @@ class HassioBridgeService : Service(), PlayerStateUpdateCallback  {
 
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+
+        this.startForeground(1, notificationClient.firstNotification());
+
         Log.i("service","Received Intent - Reloading Settings")
         playerStateClient.reloadSettings()
         notificationClient.reloadSettings()

@@ -41,7 +41,7 @@ class MainActivity : AppCompatActivity() {
 
 
         //start
-        startService(Intent(this, HassioBridgeService::class.java))
+        startForegroundService(Intent(this, HassioBridgeService::class.java))
     }
 
     private fun loadSettings(){
@@ -151,6 +151,6 @@ class MainActivity : AppCompatActivity() {
             ws.connect();
         }
 
-        startService(Intent(applicationContext, HassioBridgeService::class.java))
+        startForegroundService(Intent(applicationContext, HassioBridgeService::class.java))
     }
 }

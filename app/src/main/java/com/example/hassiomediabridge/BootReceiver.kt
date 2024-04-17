@@ -9,7 +9,7 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (Intent.ACTION_BOOT_COMPLETED == intent.action) {
             val serviceIntent = Intent(context.applicationContext, HassioBridgeService::class.java)
-            context.applicationContext.startService(serviceIntent)
+            context.applicationContext.startForegroundService(serviceIntent)
         }
     }
 }

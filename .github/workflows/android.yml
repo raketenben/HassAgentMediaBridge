@@ -43,8 +43,6 @@ jobs:
       env:
         SIGNING_KEY_ALIAS: ${{ secrets.ALIAS }}
         SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTOREPASSWORD }}
-    - name: Print folder contents
-      run: ls -R
     - name: Upload release asset
       uses: actions/upload-release-asset@v1.0.1
       env:
