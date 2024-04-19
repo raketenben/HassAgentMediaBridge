@@ -118,7 +118,7 @@ class HassioBridgeService : Service(), PlayerStateUpdateCallback  {
     private fun createNotificationChannel() {
         val name = getString(R.string.channel_name)
         val descriptionText = getString(R.string.channel_description)
-        val importance = NotificationManager.IMPORTANCE_DEFAULT
+        val importance = NotificationManager.IMPORTANCE_MIN
         val channel = NotificationChannel("MEDIA", name, importance).apply {
             description = descriptionText
         }

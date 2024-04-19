@@ -159,7 +159,7 @@ class MediaNotificationClient(var context: Context) {
                 .setSmallIcon(R.mipmap.ic_launcher_monochrome)
                 .setStyle(mediaStyle)
                 .setChannelId("MEDIA")
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setPriority(NotificationCompat.PRIORITY_MIN)
 
 
             with(NotificationManagerCompat.from(context)) {
@@ -174,7 +174,7 @@ class MediaNotificationClient(var context: Context) {
         val notificationBuilder = NotificationCompat.Builder(context, "23")
             .setSmallIcon(R.mipmap.ic_launcher_monochrome)
             .setChannelId("MEDIA")
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
 
         var not = notificationBuilder.build()
 
